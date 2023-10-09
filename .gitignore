@@ -1,3 +1,7 @@
 **/target
 contest/tests
 main
+
+# Added by cargo
+
+/target
