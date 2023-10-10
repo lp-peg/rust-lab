@@ -1,2 +1,2 @@
 [workspace]
-members = ["contest", "example/server"]
+members = ["contest", "example/server", "game/walk-the-dog"]
