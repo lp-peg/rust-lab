@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 use web_sys::console;
-
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
 // allocator.
 //
@@ -13,9 +13,46 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
-
-    // Your code goes here!
-    console::log_1(&JsValue::from_str("Hello world!"));
-
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+    let canvas = document
+        .get_element_by_id("canvas")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .unwrap();
+    let context = canvas
+        .get_context("2d")
+        .unwrap()
+        .unwrap()
+        .dyn_into::<web_sys::CanvasRenderingContext2d>()
+        .unwrap();
+    let starting_point = [(300.0, 0.0), (0.0, 600.0), (600.0, 600.0)];
+    sierpinski(&context, starting_point, 8);
     Ok(())
+}
+
+fn draw_triangle(context: &web_sys::CanvasRenderingContext2d, points: [(f64, f64); 3]) {
+    let [top, left, right] = points;
+    context.move_to(top.0, top.1);
+    context.begin_path();
+    context.line_to(left.0, left.1);
+    context.line_to(right.0, right.1);
+    context.line_to(top.0, top.1);
+    context.close_path();
+    context.stroke();
+}
+
+fn sierpinski(context: &web_sys::CanvasRenderingContext2d, points: [(f64, f64); 3], depth: i32) {
+    if depth == 0 {
+        return;
+    }
+    let depth = depth - 1;
+    let [top, left, right] = points;
+    draw_triangle(context, [top, left, right]);
+    let a = ((top.0 + left.0) / 2.0, (top.1 + left.1) / 2.0);
+    let b = ((right.0 + top.0) / 2.0, (top.1 + right.1) / 2.0);
+    let c = ((right.0 + left.0) / 2.0, (right.1 + left.1) / 2.0);
+    sierpinski(context, [top, a, b], depth);
+    sierpinski(context, [a, left, c], depth);
+    sierpinski(context, [b, c, right], depth);
 }
