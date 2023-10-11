@@ -1,11 +1,11 @@
 use rand::thread_rng;
 use rand::Rng;
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::spawn_local;
-use web_sys::console;
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
 // allocator.
 //
@@ -13,6 +13,24 @@ use web_sys::console;
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+#[derive(Deserialize)]
+struct Sheet {
+    frames: HashMap<String, Cell>,
+}
+
+#[derive(Deserialize)]
+struct Cell {
+    frame: Rect,
+}
+
+#[derive(Deserialize)]
+struct Rect {
+    x: u16,
+    y: u16,
+    w: u16,
+    h: u16,
+}
 
 // This is like the `main` function, except for JavaScript.
 #[wasm_bindgen(start)]
@@ -48,14 +66,59 @@ pub fn main_js() -> Result<(), JsValue> {
         });
         image.set_onload(Some(ok_callback.as_ref().unchecked_ref()));
         image.set_onerror(Some(err_callback.as_ref().unchecked_ref()));
-        image.set_src("rhb.png");
-        let json = fetch_json("rhb.json").await.unwrap();
+        image.set_src("Idle (1).png");
         let _ = success_rx.await.unwrap();
         context
             .draw_image_with_html_image_element(&image, 0.0, 0.0)
             .unwrap();
+
+        let json = fetch_json("rhb.json")
+            .await
+            .expect("could not fetch rhb.json");
+        let sheet: Sheet = json.into_serde().expect("");
+
+        let (success_tx, success_rx) = futures::channel::oneshot::channel::<Result<(), JsValue>>();
+        let success_tx = Rc::new(Mutex::new(Some(success_tx)));
+        let error_tx = Rc::clone(&success_tx.clone());
+        let image = web_sys::HtmlImageElement::new().unwrap();
+        let ok_callback = Closure::once(move || {
+            if let Some(success_tx) = success_tx.lock().ok().and_then(|mut opt| opt.take()) {
+                success_tx.send(Ok(())).unwrap();
+            }
+        });
+        let err_callback = Closure::once(move |err| {
+            if let Some(error_tx) = error_tx.lock().ok().and_then(|mut opt| opt.take()) {
+                error_tx.send(Err(err)).unwrap();
+            }
+        });
+        image.set_onload(Some(ok_callback.as_ref().unchecked_ref()));
+        image.set_onerror(Some(err_callback.as_ref().unchecked_ref()));
+        image.set_src("rhb.png");
+        let _ = success_rx.await.unwrap();
+
+        let sprite = sheet.frames.get("Run (1).png").expect("Cell not found");
+        web_sys::console::log_4(
+            &JsValue::from(sprite.frame.x),
+            &JsValue::from(sprite.frame.y),
+            &JsValue::from(sprite.frame.w),
+            &JsValue::from(sprite.frame.h),
+        );
         let starting_point = [(300.0, 0.0), (0.0, 600.0), (600.0, 600.0)];
         sierpinski(&context, starting_point, (255, 255, 255), 6);
+
+        context
+            .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+                &image,
+                sprite.frame.x.into(),
+                sprite.frame.y.into(),
+                sprite.frame.w.into(),
+                sprite.frame.h.into(),
+                300.0,
+                300.0,
+                sprite.frame.w.into(),
+                sprite.frame.h.into(),
+            )
+            .unwrap();
     });
     Ok(())
 }
