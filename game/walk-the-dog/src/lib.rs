@@ -1,7 +1,10 @@
 use rand::thread_rng;
 use rand::Rng;
+use std::rc::Rc;
+use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::spawn_local;
 use web_sys::console;
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
 // allocator.
@@ -28,9 +31,40 @@ pub fn main_js() -> Result<(), JsValue> {
         .unwrap()
         .dyn_into::<web_sys::CanvasRenderingContext2d>()
         .unwrap();
-    let starting_point = [(300.0, 0.0), (0.0, 600.0), (600.0, 600.0)];
-    sierpinski(&context, starting_point, (255, 255, 255), 6);
+    wasm_bindgen_futures::spawn_local(async move {
+        let (success_tx, success_rx) = futures::channel::oneshot::channel::<Result<(), JsValue>>();
+        let success_tx = Rc::new(Mutex::new(Some(success_tx)));
+        let error_tx = Rc::clone(&success_tx.clone());
+        let image = web_sys::HtmlImageElement::new().unwrap();
+        let ok_callback = Closure::once(move || {
+            if let Some(success_tx) = success_tx.lock().ok().and_then(|mut opt| opt.take()) {
+                success_tx.send(Ok(())).unwrap();
+            }
+        });
+        let err_callback = Closure::once(move |err| {
+            if let Some(error_tx) = error_tx.lock().ok().and_then(|mut opt| opt.take()) {
+                error_tx.send(Err(err)).unwrap();
+            }
+        });
+        image.set_onload(Some(ok_callback.as_ref().unchecked_ref()));
+        image.set_onerror(Some(err_callback.as_ref().unchecked_ref()));
+        image.set_src("rhb.png");
+        let json = fetch_json("rhb.json").await.unwrap();
+        let _ = success_rx.await.unwrap();
+        context
+            .draw_image_with_html_image_element(&image, 0.0, 0.0)
+            .unwrap();
+        let starting_point = [(300.0, 0.0), (0.0, 600.0), (600.0, 600.0)];
+        sierpinski(&context, starting_point, (255, 255, 255), 6);
+    });
     Ok(())
+}
+
+async fn fetch_json(json_path: &str) -> Result<JsValue, JsValue> {
+    let window = web_sys::window().unwrap();
+    let resp_value = wasm_bindgen_futures::JsFuture::from(window.fetch_with_str(json_path)).await?;
+    let resp: web_sys::Response = resp_value.dyn_into()?;
+    wasm_bindgen_futures::JsFuture::from(resp.json()?).await
 }
 
 fn draw_triangle(

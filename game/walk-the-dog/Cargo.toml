@@ -21,12 +21,16 @@ lto = true
 #default = ["wee_alloc"]
 
 [dependencies]
+async-std = "1.12.0"
 # The `wasm-bindgen` crate provides the bare minimum functionality needed
 # to interact with JavaScript.
 console_error_panic_hook = "0.1.7"
+futures = "0.3.17"
 getrandom = {version = "0.2", features = ["js"]}
 rand = "0.8.4"
+serde = {version = "1.0.188", features = ["derive"]}
 wasm-bindgen = "0.2.45"
+wasm-bindgen-futures = "0.4.28"
 
 # `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
 # compared to the default allocator's ~10K. However, it is slower than the default
@@ -36,7 +40,7 @@ wee_alloc = {version = "0.4.2", optional = true}
 # The `web-sys` crate allows you to interact with the various browser APIs,
 # like the DOM.
 [dependencies.web-sys]
-features = ["console", "Window", "Document", "HtmlCanvasElement", "CanvasRenderingContext2d", "Element"]
+features = ["console", "Window", "Response", "Document", "HtmlCanvasElement", "HtmlImageElement", "CanvasRenderingContext2d", "Element"]
 version = "0.3.22"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
@@ -50,5 +54,4 @@ version = "0.3.22"
 [dev-dependencies]
 futures = "0.3.18"
 js-sys = "0.3.55"
-wasm-bindgen-futures = "0.3.22"
 wasm-bindgen-test = "0.2.45"
