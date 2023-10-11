@@ -50,28 +50,6 @@ pub fn main_js() -> Result<(), JsValue> {
         .dyn_into::<web_sys::CanvasRenderingContext2d>()
         .unwrap();
     wasm_bindgen_futures::spawn_local(async move {
-        let (success_tx, success_rx) = futures::channel::oneshot::channel::<Result<(), JsValue>>();
-        let success_tx = Rc::new(Mutex::new(Some(success_tx)));
-        let error_tx = Rc::clone(&success_tx.clone());
-        let image = web_sys::HtmlImageElement::new().unwrap();
-        let ok_callback = Closure::once(move || {
-            if let Some(success_tx) = success_tx.lock().ok().and_then(|mut opt| opt.take()) {
-                success_tx.send(Ok(())).unwrap();
-            }
-        });
-        let err_callback = Closure::once(move |err| {
-            if let Some(error_tx) = error_tx.lock().ok().and_then(|mut opt| opt.take()) {
-                error_tx.send(Err(err)).unwrap();
-            }
-        });
-        image.set_onload(Some(ok_callback.as_ref().unchecked_ref()));
-        image.set_onerror(Some(err_callback.as_ref().unchecked_ref()));
-        image.set_src("Idle (1).png");
-        let _ = success_rx.await.unwrap();
-        context
-            .draw_image_with_html_image_element(&image, 0.0, 0.0)
-            .unwrap();
-
         let json = fetch_json("rhb.json")
             .await
             .expect("could not fetch rhb.json");
@@ -95,30 +73,47 @@ pub fn main_js() -> Result<(), JsValue> {
         image.set_onerror(Some(err_callback.as_ref().unchecked_ref()));
         image.set_src("rhb.png");
         let _ = success_rx.await.unwrap();
+        let mut frame = -1;
+        let interval_callback = Closure::wrap(Box::new(move || {
+            context.clear_rect(0.0, 0.0, 600.0, 600.0);
+            frame = (frame + 1) % 300;
+            sierpinski(
+                &context,
+                [
+                    (150.0 + (600.0 - frame as f64), 100.0),
+                    (0.0 + (600.0 - frame as f64), 400.0),
+                    (300.0 + (600.0 - frame as f64), 400.0),
+                ],
+                (255, 255, 255),
+                3,
+            );
 
-        let sprite = sheet.frames.get("Run (1).png").expect("Cell not found");
-        web_sys::console::log_4(
-            &JsValue::from(sprite.frame.x),
-            &JsValue::from(sprite.frame.y),
-            &JsValue::from(sprite.frame.w),
-            &JsValue::from(sprite.frame.h),
-        );
-        let starting_point = [(300.0, 0.0), (0.0, 600.0), (600.0, 600.0)];
-        sierpinski(&context, starting_point, (255, 255, 255), 6);
-
-        context
-            .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
-                &image,
-                sprite.frame.x.into(),
-                sprite.frame.y.into(),
-                sprite.frame.w.into(),
-                sprite.frame.h.into(),
-                300.0,
-                300.0,
-                sprite.frame.w.into(),
-                sprite.frame.h.into(),
+            let frame_name = format!("Run ({}).png", (frame % 8 + 1));
+            let sprite = sheet
+                .frames
+                .get(frame_name.as_str())
+                .expect("Cell not found");
+            context
+                .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+                    &image,
+                    sprite.frame.x.into(),
+                    sprite.frame.y.into(),
+                    sprite.frame.w.into(),
+                    sprite.frame.h.into(),
+                    0.0 + ((frame * 2) % 600) as f64,
+                    300.0,
+                    sprite.frame.w.into(),
+                    sprite.frame.h.into(),
+                )
+                .unwrap();
+        }) as Box<dyn FnMut()>);
+        window
+            .set_interval_with_callback_and_timeout_and_arguments_0(
+                interval_callback.as_ref().unchecked_ref(),
+                50,
             )
             .unwrap();
+        interval_callback.forget();
     });
     Ok(())
 }
@@ -164,6 +159,7 @@ fn sierpinski(
     let b = ((right.0 + top.0) / 2.0, (top.1 + right.1) / 2.0);
     let c = ((right.0 + left.0) / 2.0, (right.1 + left.1) / 2.0);
     let next_color = (
+        // 255, 255,        255,
         thread_rng().gen_range(0..255),
         thread_rng().gen_range(0..255),
         thread_rng().gen_range(0..255),
