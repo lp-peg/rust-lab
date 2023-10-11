@@ -1,6 +1,8 @@
 **/target
 contest/tests
 main
+tmp
+.DS_Store
 
 # Added by cargo
 
