@@ -70,6 +70,10 @@ pub fn new_image() -> Result<HtmlImageElement> {
         .map_err(|err| anyhow!("failed to create new Image element: {:#?}", err))
 }
 
+pub fn closure_wrap<T: wasm_bindgen::closure::WasmClosure + ?Sized>(data: Box<T>) -> Closure<T> {
+    Closure::wrap(data)
+}
+
 pub fn closure_once<F, A, C>(f: F) -> Closure<F::FnMut>
 where
     F: 'static + wasm_bindgen::closure::WasmClosureFnOnce<A, C>,
