@@ -3,6 +3,12 @@
 version = 3
 
 [[package]]
+name = "anyhow"
+version = "1.0.75"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4668cab20f66d8d020e1fbc0ebe47217433c1b6c8f2040faf858554e394ace6"
+
+[[package]]
 name = "async-channel"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -102,6 +108,17 @@ name = "async-task"
 version = "4.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9441c6b2fe128a7c2bf680a44c34d0df31ce09e5b7e401fcca3faa483dbc921"
+
+[[package]]
+name = "async-trait"
+version = "0.1.73"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc00ceb34980c03614e35a3a4e218276a0a824e911d07651cd0d858a51e8c0f0"
+dependencies = [
+ "proc-macro2 1.0.69",
+ "quote 1.0.33",
+ "syn",
+]
 
 [[package]]
 name = "atomic-waker"
@@ -586,7 +603,9 @@ dependencies = [
 name = "rust-webpack-template"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-std",
+ "async-trait",
  "console_error_panic_hook",
  "futures 0.3.28",
  "getrandom",
