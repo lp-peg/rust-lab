@@ -1,12 +1,12 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::{cmp, collections::HashMap};
 use web_sys::HtmlImageElement;
 
 use crate::{
     browser,
-    engine::{self, Point},
+    engine::{self, Point, Rect},
 };
 
 #[derive(Deserialize)]
@@ -32,6 +32,7 @@ pub struct WalkTheDog {
     sheet: Option<Sheet>,
     image: Option<HtmlImageElement>,
     position: Point,
+    field: Rect,
 }
 
 impl WalkTheDog {
@@ -41,6 +42,12 @@ impl WalkTheDog {
             sheet: None,
             image: None,
             position: engine::Point { x: 0, y: 0 },
+            field: Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 0.0,
+                h: 0.0,
+            },
         }
     }
 }
@@ -55,6 +62,12 @@ impl engine::Game for WalkTheDog {
             sheet: Some(sheet),
             image: Some(image),
             position: self.position,
+            field: Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 600.0,
+                h: 600.0,
+            },
         }))
     }
     fn update(&mut self, key_state: &engine::KeyState) {
@@ -62,23 +75,31 @@ impl engine::Game for WalkTheDog {
         self.frame = (self.frame + 1) % FRAMES;
         const SPEED: i16 = 5;
         let mut velocity = Point::zero();
-        if key_state.is_pressed("ArrowDown") {
+        if key_state.is_down() {
             velocity.y += SPEED;
         }
-        if key_state.is_pressed("ArrowUp") {
+        if key_state.is_up() {
             velocity.y -= SPEED;
         }
-        if key_state.is_pressed("ArrowRight") {
+        if key_state.is_right() {
             velocity.x += SPEED;
         }
-        if key_state.is_pressed("ArrowLeft") {
+        if key_state.is_left() {
             velocity.x -= SPEED;
         }
-        self.position.x += velocity.x;
-        self.position.y += velocity.y;
+        const CHARACTER_WIDTH: i16 = 160;
+        const CHARACTER_HEIGHT: i16 = 136;
+        self.position.x = cmp::min(
+            cmp::max(0, self.position.x + velocity.x),
+            (self.field.x + self.field.w) as i16 - CHARACTER_WIDTH,
+        );
+        self.position.y = cmp::min(
+            cmp::max(0, self.position.y + velocity.y),
+            (self.field.y + self.field.h) as i16 - CHARACTER_HEIGHT,
+        );
     }
     fn draw(&self, renderer: &engine::Renderer) {
-        let current_sprite = (self.frame / 3) + 1;
+        let current_sprite = ((self.frame / 3) % 8 + 1);
         let frame_name = format!("Run ({}).png", current_sprite);
         let sprite = self
             .sheet

@@ -139,6 +139,18 @@ impl KeyState {
     pub fn set_released(&mut self, code: &str) {
         self.pressed_keys.remove(code.into());
     }
+    pub fn is_up(&self) -> bool {
+        self.is_pressed("ArrowUp") || self.is_pressed("KeyK")
+    }
+    pub fn is_down(&self) -> bool {
+        self.is_pressed("ArrowDown") || self.is_pressed("KeyJ")
+    }
+    pub fn is_right(&self) -> bool {
+        self.is_pressed("ArrowRight")
+    }
+    pub fn is_left(&self) -> bool {
+        self.is_pressed("ArrowLeft")
+    }
 }
 
 fn prepare_input() -> Result<UnboundedReceiver<KeyPress>> {
