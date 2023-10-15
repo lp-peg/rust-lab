@@ -91,7 +91,6 @@ impl Renderer {
             .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into());
     }
     pub fn draw_image(&self, image: &HtmlImageElement, frame: &Rect, dest: &Rect) {
-        log!("{}", frame.y);
         self.context
             .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
                 &image,
@@ -120,6 +119,7 @@ enum KeyPress {
     KeyDown(web_sys::KeyboardEvent),
 }
 
+#[derive(Debug)]
 pub struct KeyState {
     pressed_keys: HashMap<String, web_sys::KeyboardEvent>,
 }
@@ -181,5 +181,17 @@ fn precess_input(state: &mut KeyState, recv: &mut UnboundedReceiver<KeyPress>) {
                 KeyPress::KeyUp(e) => state.set_released(&e.code()),
             },
         }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct Point {
+    pub x: i16,
+    pub y: i16,
+}
+
+impl Point {
+    pub fn zero() -> Point {
+        Point { x: 0, y: 0 }
     }
 }

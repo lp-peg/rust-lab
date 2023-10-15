@@ -4,7 +4,10 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use web_sys::HtmlImageElement;
 
-use crate::{browser, engine};
+use crate::{
+    browser,
+    engine::{self, Point},
+};
 
 #[derive(Deserialize)]
 struct Sheet {
@@ -28,6 +31,7 @@ pub struct WalkTheDog {
     frame: u8,
     sheet: Option<Sheet>,
     image: Option<HtmlImageElement>,
+    position: Point,
 }
 
 impl WalkTheDog {
@@ -36,6 +40,7 @@ impl WalkTheDog {
             frame: 0,
             sheet: None,
             image: None,
+            position: engine::Point { x: 0, y: 0 },
         }
     }
 }
@@ -49,11 +54,28 @@ impl engine::Game for WalkTheDog {
             frame: self.frame,
             sheet: Some(sheet),
             image: Some(image),
+            position: self.position,
         }))
     }
     fn update(&mut self, key_state: &engine::KeyState) {
         const FRAMES: u8 = 24;
         self.frame = (self.frame + 1) % FRAMES;
+        const SPEED: i16 = 5;
+        let mut velocity = Point::zero();
+        if key_state.is_pressed("ArrowDown") {
+            velocity.y += SPEED;
+        }
+        if key_state.is_pressed("ArrowUp") {
+            velocity.y -= SPEED;
+        }
+        if key_state.is_pressed("ArrowRight") {
+            velocity.x += SPEED;
+        }
+        if key_state.is_pressed("ArrowLeft") {
+            velocity.x -= SPEED;
+        }
+        self.position.x += velocity.x;
+        self.position.y += velocity.y;
     }
     fn draw(&self, renderer: &engine::Renderer) {
         let current_sprite = (self.frame / 3) + 1;
@@ -79,8 +101,8 @@ impl engine::Game for WalkTheDog {
                     h: sprite.frame.h.into(),
                 },
                 &engine::Rect {
-                    x: 400.0,
-                    y: 300.0,
+                    x: self.position.x.into(),
+                    y: self.position.y.into(),
                     w: sprite.frame.w.into(),
                     h: sprite.frame.h.into(),
                 },
